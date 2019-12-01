@@ -1,6 +1,7 @@
 require('dotenv').config()
 const cors = require('cors')
 const express = require('express')
+// const mysql = require('mysql')
 const querystring = require('querystring')
 const request = require('request-promise-native')
 
@@ -38,20 +39,27 @@ app.get('/login', (_, res) => {
   }
 
   // web app requests authorization
-  const scope = 'user-read-private user-read-email'
+  const scope = [
+    'user-read-private',
+    'user-read-email',
+    'playlist-read-private',
+    'playlist-modify-private',
+    'playlist-modify-public'
+  ]
+
   res.cookie(stateKey, state, options).redirect(
     'https://accounts.spotify.com/authorize?' +
       querystring.stringify({
         response_type: 'code',
         client_id,
-        scope,
+        scope: scope.join(' '),
         redirect_uri,
         state
       })
   )
 })
 
-app.get('/callback', async ({ headers, query: { code, state } }, res) => {
+app.get('/callback', ({ headers, query: { code, state } }, res) => {
   // web app requests refresh and access tokens
   // after checking the state parameter
   const regex = /([^&;=]+)=?([^&;]*)/
@@ -96,11 +104,7 @@ app.get('/callback', async ({ headers, query: { code, state } }, res) => {
           })}`
         )
       })
-      .catch(_ => {
-        res.redirect(
-          `${client}/#${querystring.stringify({ error: 'invalid_token' })}`
-        )
-      })
+      .catch(_ => res.redirect(`${client}/#${querystring.stringify({ error: 'invalid_token' })}`))
   } else {
     res.redirect(
       `${client}/#${querystring.stringify({ error: 'state_mismatch' })}`
